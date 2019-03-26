@@ -1,0 +1,92 @@
+---
+title: "検証用Rコード：国勢調査「人口総数」"
+author: <span style="font-style:normal">独立行政法人経済産業研究所　近藤恵介</span>
+date: <span style="font-style:normal">`r format(Sys.time(), '%Y/%m/%d')`</span>
+output: html_document
+---
+
+# 内容
+近藤恵介 (2019)「市町村合併を考慮した市区町村パネルデータの作成」(RIETIテクニカルペーパー 19-T-001)における検証用コード
+
+- 必要なパッケージ
+- 検証用データ
+- 内閣府「選択する未来」委員会の市区町村データと統合する
+- 市区町村コンバータを読み込む
+- 総務省「国勢調査」の各年データの再集計する
+- コンバータの正確性を検証
+
+
+## 必要なパッケージ
+以下のパッケージを使用する．まだインストールされていない場合は，`install.packages()`によりインストールすること．
+```{r warning=FALSE, message=FALSE}
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(haven)
+```
+
+## 内閣府「選択する未来」委員会の市区町村データと統合する
+wide形式のパネルデータを読み込む．必要な年次のみデータを残し，long形式に変換する．
+```{r}
+#内閣府の市区町村データ（不要な年次は削除）
+dfCaoPop_wide <- read_dta("data_pop/DTA_cao_pop.dta") %>%
+  dplyr::select(-c(pop1970, pop1975))
+#wide形式からlong形式へ変換
+dfCaoPop_long <- tidyr::gather(dfCaoPop_wide, key="time", value="pop", 3:9)
+#年を変数として追加する
+dfCaoPop_long <- dfCaoPop_long %>%
+  dplyr::mutate(year = stringr::str_replace(dfCaoPop_long$time, pattern="pop", replacement="")) %>%
+  dplyr::select(-time)
+dfCaoPop_long$year <- as.numeric(dfCaoPop_long$year)
+```
+
+## 市区町村コンバータを読み込む
+```{r}
+#データを読み込む
+dfMuniConverter <- read_dta("Municipality_Converter_Kondo_RIETI_TP_19-T-001_JP.dta")
+```
+
+## 総務省「国勢調査」の各期のデータを再集計する
+
+データは1980年から2010年までの5年毎になる．市区町村コンバータを適用し，2015年時点の市区町村単位でデータを再集計する．重複は削除する．
+```{r}
+myFunc <- function(x){
+  #データを読み込む
+  dfOld <- read_dta(paste0("data_pop/DTA_estat_pop", x, ".dta"))
+  #データを2015年時点の市区町村単位で再集計
+  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by=c("id_muni" = "match_id_muni")) %>%
+    dplyr::select(id_muni, id_muni2015, name_muni2015, pop) %>%
+    dplyr::group_by(id_muni2015) %>%
+    dplyr::filter(!is.na(id_muni2015)) %>%
+    dplyr::mutate(totalpop=sum(pop)) %>%
+    dplyr::mutate(year=x) %>%
+    dplyr::select(year, id_muni2015, name_muni2015, totalpop) %>%
+    dplyr::distinct()
+}
+dfPop_long <- purrr::map_dfr(seq(1980,2010,5),myFunc)
+```
+
+wide形式に変換する(必須ではない)．
+```{r}
+#wide形式に変換
+dfPop_wide <- tidyr::spread(dfPop_long, key=year, value=totalpop)
+#変数名の変更
+oldvarname <- names(dfPop_wide)[3:length(dfPop_wide)]
+newvarname <- paste0("totalpop", oldvarname)
+namelist <- setNames(oldvarname, newvarname)
+dfPop_wide <- dplyr::rename(dfPop_wide, !!!namelist)
+```
+
+## コンバータの正確性を検証
+
+e-Statから独自に集計した市区町村パネルデータと，内閣府「選択する未来」委員会における市区町村データを比較するため，両者の差分を計算する．
+```{r}
+dfPopJoin <- dplyr::left_join(dfPop_long, dfCaoPop_long, by=c("id_muni2015" = "id_muni", "year" = "year")) %>%
+  dplyr::mutate(diff = totalpop - pop)
+```
+
+差分の大きさを表示する．
+```{r}
+dplyr::filter(dfPopJoin, diff!=0)
+```

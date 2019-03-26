@@ -1,0 +1,101 @@
+---
+title: "検証用Rコード：工業統計調査「製造品出荷額等」"
+author: <span style="font-style:normal">独立行政法人経済産業研究所　近藤恵介</span>
+date: <span style="font-style:normal">`r format(Sys.time(), '%Y/%m/%d')`</span>
+output: html_document
+---
+
+# 内容
+近藤恵介 (2019)「市町村合併を考慮した市区町村パネルデータの作成」(RIETIテクニカルペーパー 19-T-001)における検証用コード
+
+- 必要なパッケージ
+- 検証用データ
+- 内閣府「選択する未来」委員会の市区町村データと統合する
+- 市区町村コンバータを読み込む
+- 経済産業省「工業統計調査」の各年データを再集計する
+- コンバータの正確性を検証
+
+
+## 必要なパッケージ
+以下のパッケージを使用する．まだインストールされていない場合は，`install.packages()`によりインストールすること．
+```{r warning=FALSE, message=FALSE}
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(haven)
+```
+
+## 内閣府「選択する未来」委員会の市区町村データと統合する
+wide形式のパネルデータを読み込む．必要な年次のみデータを残し，long形式に変換する．
+```{r}
+#内閣府の市区町村データ（不要な年次は削除）
+dfCaoManu_wide <- read_dta("data_manu/DTA_cao_manu.dta") %>%
+  dplyr::select(c(1:2,34:44))
+#wide形式からlong形式へ変換
+dfCaoManu_long <- tidyr::gather(dfCaoManu_wide, key="time", value="sales", 3:13)
+#年を変数として追加する
+dfCaoManu_long <- dfCaoManu_long %>%
+  dplyr::mutate(year = stringr::str_replace(dfCaoManu_long$time, pattern="manu", replacement="")) %>%
+  dplyr::select(-time)
+dfCaoManu_long$year <- as.numeric(dfCaoManu_long$year)
+```
+
+## 市区町村コンバータを読み込む
+```{r}
+dfMuniConverter <- read_dta("Municipality_Converter_Kondo_RIETI_TP_19-T-001_JP.dta")
+```
+
+## 経済産業省「工業統計調査」の各年データを再集計する
+データは2002年から2012年までの製造業全体を対象とする．市区町村コンバータを適用し，2015年時点の市区町村単位でデータを再集計する．重複は削除する．
+
+```{r}
+myFunc <- function(x){
+  #データを読み込む
+  dfOld <- read_dta(paste0("data_manu/DTA_meti_manu", x, ".dta"))
+  #データを2015年時点の市区町村単位で再集計
+  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by=c("id_muni" = "match_id_muni")) %>%
+    dplyr::filter(id_sec2d== 0) %>%
+    dplyr::select(id_muni, id_muni2015, name_muni2015, sales) %>%
+    dplyr::filter(!is.na(id_muni2015)) %>%
+    dplyr::group_by(id_muni2015) %>%
+    dplyr::mutate(totalsales=sum(sales, na.rm=TRUE)) %>%
+    dplyr::mutate(year=x) %>%
+    dplyr::select(year, id_muni2015, name_muni2015, totalsales) %>%
+    dplyr::distinct()
+}
+dfManu_long <- purrr::map_dfr(seq(2002,2012,1),myFunc)
+#内閣府のデータと単位を揃える
+dfManu_long$totalsales <- dfManu_long$totalsales/100
+```
+
+Wide形式に変換する(必須ではない)．
+```{r}
+#wide形式に変換
+dfManu_wide <- tidyr::spread(dfManu_long, key=year, value=totalsales)
+#変数名の変更
+oldvarname <- names(dfManu_wide)[3:length(dfManu_wide)]
+newvarname <- paste0("totalsales", oldvarname)
+namelist <- setNames(oldvarname, newvarname)
+dfManu_wide <- dplyr::rename(dfManu_wide, !!!namelist)
+```
+
+
+## コンバータの正確性を検証
+
+経済産業省「工業統計調査」のウェブページから独自に集計した市区町村パネルデータと，内閣府「選択する未来」委員会における市区町村データを比較するため，両者の差分を計算する．
+
+```{r}
+dfManuJoin <- dplyr::left_join(dfManu_long, dfCaoManu_long, by=c("id_muni2015" = "id_muni", "year" = "year")) %>%
+  dplyr::mutate(diff = totalsales - sales)
+```
+
+差分の大きさを表示する．
+```{r}
+dplyr::filter(dfManuJoin, diff!=0)
+dplyr::filter(dfManuJoin, diff > 1 | diff < -1)
+dplyr::filter(dfManuJoin, diff > 2 | diff < -2)
+dplyr::filter(dfManuJoin, is.na(diff) & !is.na(totalsales) & totalsales!=0)
+dplyr::filter(dfManuJoin, is.na(diff) & !is.na(sales))
+summary(dfManuJoin$diff)
+```
