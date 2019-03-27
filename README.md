@@ -8,4 +8,4 @@ https://www.rieti.go.jp/en/publications/summary/19030013.html
 Keisuke Kondo
 Fellow, Research Institute of Economy, Trade and Industry
 Email: kondo-keisuke@rieti.go.jp
-URL: https://sites.google.com/site/keisukekondokk/
+URL: https://sites.google.com/site/keisukekondokk/ 
