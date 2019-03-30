@@ -1,33 +1,33 @@
 /**********************************************************
 ** (C) Keisuke Kondo
-** ŒöŠJ“ú: March 18, 2019
+** å…¬é–‹æ—¥: March 18, 2019
 ** 
-** [à–¾]
-** ‹ß“¡(2019)“à‚ÅŽg—p‚µ‚½Stataƒtƒ@ƒCƒ‹
+** [èª¬æ˜Ž]
+** è¿‘è—¤(2019)å†…ã§ä½¿ç”¨ã—ãŸStataãƒ•ã‚¡ã‚¤ãƒ«
 ** 
-** [•K—v‚Èƒ\ƒtƒgƒEƒFƒA]
-** Stata 14ˆÈã
+** [å¿…è¦ãªã‚½ãƒ•ãƒˆã‚¦ã‚§ã‚¢]
+** Stata 14ä»¥ä¸Š
 ** 
-** [•¶Œ£]
-** ‹ß“¡Œb‰î (2019) uŽs’¬‘º‡•¹‚ðl—¶‚µ‚½Žs‹æ’¬‘ºƒpƒlƒ‹ƒf[ƒ^‚Ìì¬vC
-** RIETIƒeƒNƒjƒJƒ‹ƒy[ƒp[ 19-T-001
+** [æ–‡çŒ®]
+** è¿‘è—¤æµä»‹ (2019) ã€Œå¸‚ç”ºæ‘åˆä½µã‚’è€ƒæ…®ã—ãŸå¸‚åŒºç”ºæ‘ãƒ‘ãƒãƒ«ãƒ‡ãƒ¼ã‚¿ã®ä½œæˆã€ï¼Œ
+** RIETIãƒ†ã‚¯ãƒ‹ã‚«ãƒ«ãƒšãƒ¼ãƒ‘ãƒ¼ 19-T-001
 **********************************************************/
 
-# –ÚŽŸ
-1. ƒfƒBƒŒƒNƒgƒŠEƒtƒ@ƒCƒ‹\¬
-2. à–¾
-3. ”õl
+# ç›®æ¬¡
+1. ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªãƒ»ãƒ•ã‚¡ã‚¤ãƒ«æ§‹æˆ
+2. èª¬æ˜Ž
+3. å‚™è€ƒ
 
-# 1. ƒfƒBƒŒƒNƒgƒŠEƒtƒ@ƒCƒ‹\¬
- |-data_manu // ŒöŠJ‚³‚ê‚Ä‚¢‚éH‹Æ“Œv(ŒoÏŽY‹ÆÈ)‚ÌŽs‹æ’¬‘ºƒf[ƒ^
- |-data_pop // ŒöŠJ‚³‚ê‚Ä‚¢‚é‘¨’²¸(‘–±È“Œv‹Ç)‚ÌŽs‹æ’¬‘ºƒf[ƒ^
- |-DO_demo_manu.do // H‹Æ“Œv—p‚ÌDOƒtƒ@ƒCƒ‹
- |-DO_demo_pop.do // ‘¨’²¸—p‚ÌDOƒtƒ@ƒCƒ‹
+# 1. ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªãƒ»ãƒ•ã‚¡ã‚¤ãƒ«æ§‹æˆ
+ |-data_manu // å…¬é–‹ã•ã‚Œã¦ã„ã‚‹å·¥æ¥­çµ±è¨ˆ(çµŒæ¸ˆç”£æ¥­çœ)ã®å¸‚åŒºç”ºæ‘ãƒ‡ãƒ¼ã‚¿
+ |-data_pop // å…¬é–‹ã•ã‚Œã¦ã„ã‚‹å›½å‹¢èª¿æŸ»(ç·å‹™çœçµ±è¨ˆå±€)ã®å¸‚åŒºç”ºæ‘ãƒ‡ãƒ¼ã‚¿
+ |-DO_demo_manu.do // å·¥æ¥­çµ±è¨ˆç”¨ã®DOãƒ•ã‚¡ã‚¤ãƒ«
+ |-DO_demo_pop.do // å›½å‹¢èª¿æŸ»ç”¨ã®DOãƒ•ã‚¡ã‚¤ãƒ«
  |-Municipal_Converter_Kondo_RIETI_TP_19-T-001_JP.dta 
-   // Žs‹æ’¬‘ºƒRƒ“ƒo[ƒ^
+   // å¸‚åŒºç”ºæ‘ã‚³ãƒ³ãƒãƒ¼ã‚¿
 
-# 2. à–¾
-ƒfƒBƒŒƒNƒgƒŠ“à‚Ì"DO_demo_manu.do"‚Æ"DO_demo_pop.do"‚ðŽÀs‚µ‚Ä‰º‚³‚¢D
+# 2. èª¬æ˜Ž
+ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªå†…ã®"DO_demo_manu.do"ã¨"DO_demo_pop.do"ã‚’å®Ÿè¡Œã—ã¦ä¸‹ã•ã„ï¼Ž
 
 # 3. Notes
-Ú×‚Í‹ß“¡(2019)‚ðŽQÆ‚µ‚Ä‰º‚³‚¢D
+è©³ç´°ã¯è¿‘è—¤(2019)ã‚’å‚ç…§ã—ã¦ä¸‹ã•ã„ï¼Ž
