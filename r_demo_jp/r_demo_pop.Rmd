@@ -33,10 +33,10 @@ wide形式のパネルデータを読み込む．必要な年次のみデータ�
 dfCaoPop_wide <- read_dta("data_pop/DTA_cao_pop.dta") %>%
   dplyr::select(-c(pop1970, pop1975))
 #wide形式からlong形式へ変換
-dfCaoPop_long <- tidyr::gather(dfCaoPop_wide, key="time", value="pop", 3:9)
+dfCaoPop_long <- tidyr::gather(dfCaoPop_wide, key = "time", value = "pop", 3:9)
 #年を変数として追加する
 dfCaoPop_long <- dfCaoPop_long %>%
-  dplyr::mutate(year = stringr::str_replace(dfCaoPop_long$time, pattern="pop", replacement="")) %>%
+  dplyr::mutate(year = stringr::str_replace(dfCaoPop_long$time, pattern = "pop", replacement = "")) %>%
   dplyr::select(-time)
 dfCaoPop_long$year <- as.numeric(dfCaoPop_long$year)
 ```
@@ -44,7 +44,8 @@ dfCaoPop_long$year <- as.numeric(dfCaoPop_long$year)
 ## 市区町村コンバータを読み込む
 ```{r}
 #データを読み込む
-dfMuniConverter <- read_dta("Municipality_Converter_Kondo_RIETI_TP_19-T-001_JP.dta")
+#dfMuniConverter <- read_dta("municipality_converter_jp.dta")
+dfMuniConverter <- readr::read_csv("municipality_converter_jp.csv")
 ```
 
 ## 総務省「国勢調査」の各期のデータを再集計する
@@ -55,22 +56,22 @@ myFunc <- function(x){
   #データを読み込む
   dfOld <- read_dta(paste0("data_pop/DTA_estat_pop", x, ".dta"))
   #データを2015年時点の市区町村単位で再集計
-  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by=c("id_muni" = "match_id_muni")) %>%
+  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by=c("id_muni" = "merge_id_muni")) %>%
     dplyr::select(id_muni, id_muni2015, name_muni2015, pop) %>%
     dplyr::group_by(id_muni2015) %>%
     dplyr::filter(!is.na(id_muni2015)) %>%
-    dplyr::mutate(totalpop=sum(pop)) %>%
+    dplyr::mutate(totalpop = sum(pop)) %>%
     dplyr::mutate(year=x) %>%
     dplyr::select(year, id_muni2015, name_muni2015, totalpop) %>%
     dplyr::distinct()
 }
-dfPop_long <- purrr::map_dfr(seq(1980,2010,5),myFunc)
+dfPop_long <- purrr::map_dfr(seq(1980, 2010, 5),myFunc)
 ```
 
 wide形式に変換する(必須ではない)．
 ```{r}
 #wide形式に変換
-dfPop_wide <- tidyr::spread(dfPop_long, key=year, value=totalpop)
+dfPop_wide <- tidyr::spread(dfPop_long, key = year, value = totalpop)
 #変数名の変更
 oldvarname <- names(dfPop_wide)[3:length(dfPop_wide)]
 newvarname <- paste0("totalpop", oldvarname)

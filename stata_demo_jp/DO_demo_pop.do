@@ -20,13 +20,16 @@ forvalues i = 1980(5)2010 {
 	sort id_muni
 
 	** コンバータとの接続キーを作成する
-	gen match_id_muni = id_muni
+	gen merge_id_muni = id_muni
 
 	** 接続キーを用いてコンバータ内の2015年時点の市区町村コードと市区町村名を追加
-	merge 1:1 match_id_muni using "Municipality_Converter_Kondo_RIETI_TP_19-T-001_JP.dta", keepusing(id_muni2015 name_muni2015)
+	merge 1:1 merge_id_muni using "municipality_converter_jp.dta", keepusing(id_muni2015 name_muni_jp2015)
 
 	** 原データ側にしかなかった不要な情報を削除（接続漏れがないか念のため確認）
 	drop if _merge == 1
+	
+	** コンバータ側にしかなかった不要な情報を削除（接続漏れがないか念のため確認）
+	drop if id_muni2015 == .
 
 	** 2015年時点の市区町村コードによって再集計する
 	by id_muni2015, sort: egen totalpop = total(pop), missing
@@ -37,7 +40,7 @@ forvalues i = 1980(5)2010 {
 	
 	** データの整形
 	sort id_muni2015
-	keep year id_muni2015 name_muni2015 totalpop
+	keep year id_muni2015 name_muni_jp2015 totalpop
 
 	** 2015 年基準で再集計した過去データの保存
 	save "data_pop/DTA_estat_pop`i'_base2015.dta", replace
