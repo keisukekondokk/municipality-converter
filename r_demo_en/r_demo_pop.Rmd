@@ -1,0 +1,99 @@
+---
+title: "R Code for Replication: Total Population from Population Census"
+author: <span style="font-style:normal">Keisuke Kondo (RIETI & RIEB, Kobe University)</span>
+date: <span style="font-style:normal">`r format(Sys.time(), '%Y/%m/%d')`</span>
+output: html_document
+---
+
+# Content
+
+R codes and data for replication (Kondo, 2023)
+
+- Packages
+- Municipal Data
+- Municipality Converter
+- Aggregate Municipal Data of Population Census by Municipality as of 2015
+- Verification of Accuracy of Municipality Converter
+
+## Packages
+
+Load the following packages. Install them by `install.packages()` if not installed.
+
+```{r warning=FALSE, message=FALSE}
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(haven)
+```
+
+## Municipal Data 
+
+Load the wide panel data from Japan's Future Committee. Reshape wide panel data to long panel data.
+
+```{r}
+#Load Municipal Panel Data from Japan's Future Committee. 
+dfCaoPop_wide <- read_dta("data_pop/DTA_cao_pop.dta") %>%
+  dplyr::select(-c(pop1970, pop1975))
+#From Wide to Long
+dfCaoPop_long <- tidyr::gather(dfCaoPop_wide, key = "time", value = "pop", 3:9)
+#Add Variable of Year
+dfCaoPop_long <- dfCaoPop_long %>%
+  dplyr::mutate(year = stringr::str_replace(dfCaoPop_long$time, pattern = "pop", replacement = "")) %>%
+  dplyr::select(-time)
+dfCaoPop_long$year <- as.numeric(dfCaoPop_long$year)
+```
+
+## Municipality Converter
+
+```{r}
+#Load Municipality Converter
+dfMuniConverter <- readr::read_csv("municipality_converter_en.csv")
+```
+
+## Aggregate Municipal Data of Population Census by Municipality as of 2015
+
+```{r}
+myFunc <- function(x){
+  #Load Data
+  dfOld <- read_dta(paste0("data_pop/DTA_estat_pop", x, ".dta"))
+  #Add Panel ID and Municipal Names from Municipality Converter
+  #Aggregate Municipal Data by Municipality as of 2015
+  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by=c("id_muni" = "merge_id_muni")) %>%
+    dplyr::select(id_muni, id_muni2015, name_muni2015, pop) %>%
+    dplyr::group_by(id_muni2015) %>%
+    dplyr::filter(!is.na(id_muni2015)) %>%
+    dplyr::mutate(totalpop = sum(pop)) %>%
+    dplyr::mutate(year=x) %>%
+    dplyr::select(year, id_muni2015, name_muni2015, totalpop) %>%
+    dplyr::distinct()
+}
+dfPop_long <- purrr::map_dfr(seq(1980, 2010, 5),myFunc)
+```
+
+Reshape from long to wide panel data.
+
+```{r}
+#Wide Panel Data
+dfPop_wide <- tidyr::spread(dfPop_long, key = year, value = totalpop)
+#Rename Variable Names
+oldvarname <- names(dfPop_wide)[3:length(dfPop_wide)]
+newvarname <- paste0("totalpop", oldvarname)
+namelist <- setNames(oldvarname, newvarname)
+dfPop_wide <- dplyr::rename(dfPop_wide, !!!namelist)
+```
+
+## Verification of Accuracy of Municipality Converter
+
+Compare total population between aggregated data and answer data.
+
+```{r}
+dfPopJoin <- dplyr::left_join(dfPop_long, dfCaoPop_long, by=c("id_muni2015" = "id_muni", "year" = "year")) %>%
+  dplyr::mutate(diff = totalpop - pop)
+```
+
+Show differences in total population.
+
+```{r}
+dplyr::filter(dfPopJoin, diff!=0)
+```

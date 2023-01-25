@@ -1,0 +1,110 @@
+---
+title: "R Code for Replication: Total Population from Census of Manufacture"
+author: <span style="font-style:normal">Keisuke Kondo (RIETI & RIEB, Kobe University)</span>
+date: <span style="font-style:normal">`r format(Sys.time(), '%Y/%m/%d')`</span>
+output: html_document
+---
+
+# Content
+
+R codes and data for replication (Kondo, 2023)
+
+- Packages
+- Municipal Data
+- Municipality Converter
+- Aggregate Municipal Data of Census of Manufacture by Municipality as of 2015
+- Verification of Accuracy of Municipality Converter
+
+## Packages
+
+Load the following packages. Install them by `install.packages()` if not installed.
+
+```{r warning=FALSE, message=FALSE}
+library(dplyr)
+library(purrr)
+library(readr)
+library(stringr)
+library(haven)
+```
+
+
+## Municipal Data 
+
+Load the wide panel data from Japan's Future Committee. Reshape wide panel data to long panel data.
+
+```{r}
+#Load Municipal Panel Data from Japan's Future Committee. 
+dfCaoManu_wide <- read_dta("data_manu/DTA_cao_manu.dta") %>%
+  dplyr::select(c(1:2, 34:44))
+#From Wide to Long
+dfCaoManu_long <- tidyr::gather(dfCaoManu_wide, key = "time", value = "sales", 3:13)
+#Add Variable of Year
+dfCaoManu_long <- dfCaoManu_long %>%
+  dplyr::mutate(year = stringr::str_replace(dfCaoManu_long$time, pattern = "manu", replacement = "")) %>%
+  dplyr::select(-time)
+dfCaoManu_long$year <- as.numeric(dfCaoManu_long$year)
+```
+
+## Municipality Converter
+```{r}
+#Load Municipality Converter
+dfMuniConverter <- readr::read_csv("municipality_converter_en.csv")
+```
+
+## Aggregate Municipal Data of Census of Manufacture by Municipality as of 2015
+
+The municipal data cover the entire manufacturing industry from 2002 to 2012. A municipality converter is applied to aggregate the data in units of municipalities as of 2015. Duplicates are removed.
+
+```{r}
+myFunc <- function(x){
+  #Load Data
+  dfOld <- read_dta(paste0("data_manu/DTA_meti_manu", x, ".dta"))
+  #Add Panel ID and Municipal Names from Municipality Converter
+  #Aggregate Municipal Data by Municipality as of 2015
+  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by = c("id_muni" = "merge_id_muni")) %>%
+    dplyr::filter(id_sec2d== 0) %>%
+    dplyr::select(id_muni, id_muni2015, name_muni2015, sales) %>%
+    dplyr::filter(!is.na(id_muni2015)) %>%
+    dplyr::group_by(id_muni2015) %>%
+    dplyr::mutate(totalsales=sum(sales, na.rm = TRUE)) %>%
+    dplyr::mutate(year = x) %>%
+    dplyr::select(year, id_muni2015, name_muni2015, totalsales) %>%
+    dplyr::distinct()
+}
+dfManu_long <- purrr::map_dfr(seq(2002, 2012, 1), myFunc)
+#Match the Unit of Values
+dfManu_long$totalsales <- dfManu_long$totalsales / 100
+```
+
+Reshape from long to wide panel data.
+
+```{r}
+#Wide Panel Data
+dfManu_wide <- tidyr::spread(dfManu_long, key = year, value = totalsales)
+#Rename Variable Names
+oldvarname <- names(dfManu_wide)[3:length(dfManu_wide)]
+newvarname <- paste0("totalsales", oldvarname)
+namelist <- setNames(oldvarname, newvarname)
+dfManu_wide <- dplyr::rename(dfManu_wide, !!!namelist)
+```
+
+
+## Verification of Accuracy of Municipality Converter
+
+Compare values in value of manufactured goods shipments between aggregated data and answer data.
+
+```{r}
+dfManuJoin <- dplyr::left_join(dfManu_long, dfCaoManu_long, by=c("id_muni2015" = "id_muni", "year" = "year")) %>%
+  dplyr::mutate(diff = totalsales - sales)
+```
+
+Show differences in total population.
+
+```{r}
+dplyr::filter(dfManuJoin, diff!=0)
+dplyr::filter(dfManuJoin, diff > 1 | diff < -1)
+dplyr::filter(dfManuJoin, diff > 2 | diff < -2)
+dplyr::filter(dfManuJoin, is.na(diff) & !is.na(totalsales) & totalsales!=0)
+dplyr::filter(dfManuJoin, is.na(diff) & !is.na(sales))
+summary(dfManuJoin$diff)
+```
