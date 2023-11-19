@@ -78,4 +78,5 @@ ggplot(dfPopWidePanel, aes(x = lnpop1980, y = growth_pop)) +
   ylab("log(Pop. in 2020) - log(Pop. in 1980)") +
   xlab("log(Pop. in 1980)") 
 ggsave("fig/fig_scatter.eps")
+ggsave("fig/fig_scatter.svg")
 ```
