@@ -1,0 +1,81 @@
+---
+title: "R Code for Replication: Total Population from Population Census"
+author: <span style="font-style:normal">Keisuke Kondo (RIETI & RIEB, Kobe University)</span>
+date: <span style="font-style:normal">`r format(Sys.time(), '%Y/%m/%d')`</span>
+output: html_document
+---
+
+# Content
+
+R codes and data for replication of Figure 5 (Kondo, 2023)
+
+## Packages
+
+Load the following packages. Install them by `install.packages()` if not installed.
+
+```{r warning=FALSE, message=FALSE}
+library(dplyr)
+library(readr)
+library(purrr)
+library(tidyr)
+library(ggplot2)
+```
+
+## Municipality Converter
+
+```{r}
+#Load Municipality Converter
+dfMuniConverter <- readr::read_csv("data_converter/municipality_converter_en.csv")
+```
+
+## Make Municipal Panel Data of Population Census by Municipality as of 2020
+
+```{r}
+myFunc <- function(x){
+  #Load Data
+  dfOld <- readr::read_csv(paste0("data/muni_pop", x, ".csv"))
+  #Add Panel ID and Municipal Names from Municipality Converter
+  #Aggregate Municipal Data by Municipality as of 2020
+  dfNew <- dplyr::left_join(dfOld, dfMuniConverter, by=c("id_muni" = "merge_id_muni")) %>%
+    dplyr::select(id_muni, id_muni2020, name_muni2020, pop) %>%
+    dplyr::group_by(id_muni2020) %>%
+    dplyr::filter(!is.na(id_muni2020)) %>%
+    dplyr::mutate(totalpop = sum(pop)) %>%
+    dplyr::mutate(year=x) %>%
+    dplyr::select(year, id_muni2020, name_muni2020, totalpop) %>%
+    dplyr::distinct()
+}
+dfPopLongPanel <- purrr::map_dfr(c(1980, 2020), myFunc)
+```
+
+Reshape from long to wide panel data.
+
+```{r}
+#Wide Panel Data
+dfPopWidePanel <- tidyr::spread(dfPopLongPanel, key = year, value = totalpop)
+#Rename Variable Names
+oldvarname <- names(dfPopWidePanel)[3:length(dfPopWidePanel)]
+newvarname <- paste0("totalpop", oldvarname)
+namelist <- setNames(oldvarname, newvarname)
+dfPopWidePanel <- dplyr::rename(dfPopWidePanel, !!!namelist)
+```
+
+## Scatter Plot
+
+Maker scatter plot of the population growth between 1980 and 2020 and the population in 1980.
+
+```{r}
+#Growth
+dfPopWidePanel <- dfPopWidePanel %>%
+  dplyr::mutate(lnpop1980 = log(totalpop1980)) %>%
+  dplyr::mutate(lnpop2020 = log(totalpop2020)) %>%
+  dplyr::mutate(growth_pop = lnpop2020 - lnpop1980)
+
+#Scatter Plot
+ggplot(dfPopWidePanel, aes(x = lnpop1980, y = growth_pop)) +
+  geom_point() +
+  geom_smooth(method = "lm", colour="red") +
+  ylab("log(Pop. in 2020) - log(Pop. in 1980)") +
+  xlab("log(Pop. in 1980)") 
+ggsave("fig/fig_scatter.eps")
+```
